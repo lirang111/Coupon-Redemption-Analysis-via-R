@@ -1,0 +1,228 @@
+---
+title: "How coupon redemption affect business?"
+author: "RangLi"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+setwd("/Users/yuhang/Desktop/DSC520/final/")
+library(dplyr)
+library(ggplot2)
+library(caTools)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction
+Coupons have been using for business as a tool for promotion and gain sales for several decades. With the development of technology, coupon delivering methods have been changing, from mailing paper coupons to sending mobile coupons, as well as coupon codes sent by e-commerce. Coupons could active previous customers, also brings in new customers. Promotions by retail companies attracts consumers to try new products or stock items that is on sale. It's estimated that 60% of consumers are likely to try a new product as a result of a coupon, while 46% said they'd change their planned purchase(Epstein, 2022). In the meantime, business interests in how coupons have benefit there sales, as well as how to minimize their investment on the promotion campaign to gain the most profit.
+
+As one of the most practical way to increase the revenue and enhance the profit margin, essentially each merchant is keen to understand how to boost their business by sending coupons more effectively. Analyzing the previous coupon redemption data systematically will be a very intersting and important approach. 
+
+![coupon-main](/Users/yuhang/Desktop/DSC520/final/coupon-main.jpeg)
+
+
+
+
+# Research questions
+1. Correspondingly how could we clean the dataset to keep good data?
+2. What data fields are most relevant for this study?
+3. How should we categorize the data set, how many ways we could categorize it?
+4. Is there any certain distribution pattern for the dataset itself?
+5. Did we find any statistical correlation between two groups?
+6. What is the return on investment from coupons? and what kind of return that is?
+7. What group of consumers use coupons more?
+
+
+# Approach
+First, I'm going to investigate what category has the most redemption of coupons base on the dataset.
+
+Secondly, I'll further investigate customer demographics dataset to summarize the groups of customers that had the most coupon redemption.
+
+Thirdly, I'll make some analysis based on the customer transaction data set on how well coupons are redeemed and make the comparison of the two groups on which group has contributed more to business sales.
+
+The data set we are working on first are "customer_demographics" and "customer_transaction_data".
+
+The customer_demographics data has 6 columns/dimensions, there is no missing values in column "age_range", "rented", "family_size" and "income_bracket"; however, there are lots of missing values on column "marital_status", "no_of_children".
+
+Each column/dimension, in real life perspective, may have an actual impact on the output, we will perform a model training with the 4 columns with complete input to start with, on the other hand, we could also get rid of entries with empty marital status, in that case, we will be able to train with 5 columns.
+
+```{r dataset1, include=TRUE, echo=FALSE}
+demo_df <- read.csv("customer_demographics.csv")
+head(demo_df)
+demo_df_1 <- demo_df
+demo_df_1[demo_df_1 == ""] <- NA
+demo_df_1 <- na.omit(demo_df_1)
+head(demo_df_1)
+```
+
+I've replaced the empty values to NA, and used na.omit to omit all the rows contains NA, so that we only keep the rows that have completed data. I assigned the new data set to "demo_df_1".
+
+From the cleaned data, I would like to do some grouping, to group them by ages. I would like to set ages between 18-25 as group1, ages 26-35 as group2, 36-45 as group3, 46-55 as group4, 56-70 as group 5, and ages 70 and older as group 6. By grouping them into different age groups, we could make some analysis see which group has the most customer.
+
+```{r group, include=TRUE, echo=TRUE}
+group1 <- demo_df_1 %>% filter(age_range=="18-25")
+group2 <- demo_df_1 %>% filter(age_range=="26-35")
+group3 <- demo_df_1 %>% filter(age_range=="36-45")
+group4 <- demo_df_1 %>% filter(age_range=="46-55")
+group5 <- demo_df_1 %>% filter(age_range=="56-70")
+group6 <- demo_df_1 %>% filter(age_range=="70+")
+summary(group1)
+summary(group2)
+summary(group3)
+summary(group4)
+summary(group5)
+summary(group6)
+```
+
+By looking into each groups, we could see group 4 is the largest customer group, which the age range between 46-55. Meanwhile, group3 and group6 has the largest mean in income_bracket of 5.5, as 10 is the highest income index. We could assume that ages 46-55 tends to shop more, so that we could send more coupons to them to attract those groups of customers to shopping.
+
+"customer_transaction_data" is a complete data set. I would like to work on this data set, using "item id", "selling price", "coupon discount" to see how many items sold with coupon redemption. 
+
+```{r co, include=TRUE, echo=TRUE}
+transaction <- read.csv("customer_transaction_data.csv")
+head(transaction)
+
+transaction_coupon <- transaction %>% select("item_id", "selling_price", "coupon_discount")
+
+transaction_coupon1 <- transaction %>% select("item_id", "selling_price", "coupon_discount") %>% filter(coupon_discount!="0")
+head(transaction_coupon1)
+
+transaction_coupon2 <- transaction %>% select("item_id", "selling_price", "coupon_discount") %>% filter(coupon_discount=="0")
+head(transaction_coupon2)
+nrow(transaction_coupon1)
+nrow(transaction_coupon2)
+nrow(transaction)
+```
+
+After some data transformation, by splitting the customer transaction data into 2 groups, transaction_coupon1 is the group that have used coupons when made a purchase, while transaction_coupon2 is the group that used zero coupons with purchases. By pulling out the datas, we could see that transaction_coupon1 contains 21286 items, means there are 21286 items was sold with a coupon redemption. Meanwhile there are 1303280 purchases was made by a coupon redemption. The total transaction data has 1324566 items, overall there is only 1.6% of purchases are made with a coupon redemption, which is so low compared to the total purchases. 
+
+For now, I'm think to merge the "customer_demographics data" with the "customer transaction_data" to better looking at the purchasing power of each group and how well each group redeemed coupons so that business could refer to when they need to send coupons to targeted customer groups. However, we haven't covered that part to merge two data sets and merge them by dividing them using a specific condition.
+
+
+I've found another data set that could help dig further on this topic.
+
+This is a data set used to make prediction on coupon redemption by a business to compare both online and offline coupon usage. The data I choose is the offline data set,which contains variables "User_id", "Merchant_id", "Coupon_id", "Discount_rate", "Distance", "Date_received" and "Date".
+
+```{r o, include=TRUE, echo=TRUE}
+offline <- read.csv("offline_train.csv")
+head(offline)
+```
+
+First, I would like to make some changes about the data, I noticed that for the discount rate, the original data has the discount rate marked as, 150:20, which means $20 off $150, while 20:1 means take $1off for evey $20 spent. The way it indicates the discount makes it hard to do analysis for the following steps, so I would like to transform the discount rate into the simple discount rate as 1 indicates 100% of original price, and 0.5 indicates 50% of original price, while 0.95 indicates 5% off. After some transformation, I have the data showing below.
+
+```{r trans, include=TRUE, echo=TRUE}
+offline_df <- read.csv("offline_train2.csv")
+head(offline_df)
+```
+
+For this data set, I would like to investigate what is correlated with coupon redemption, I assume both discount rate and distance customers live to the store have a correlation with coupon redemption. I would slice the data into several chunks so that we could make analysis on different conditions. 
+
+
+First of all, I would like to remove all the rows that coupon not received by customers, we only wants to look at the cases that customer redeemed the coupon or not as they received the coupons.
+
+```{r na, include=TRUE, echo=TRUE}
+offline_df <- offline_df[complete.cases(offline_df[ , ('Date_received')]), ]
+head(offline_df)
+```
+
+Then, I would choose the "Date received", "Date"(redeemed) and "distance" as a data frame to see if there is a correlation between those variables. If variable "Date" is not "null" values, that indicates that the coupon is received and redeemed by customers.
+
+```{r slice, include=TRUE, echo=TRUE}
+distance_df <- offline_df %>% select("Distance", "Date_received", "Date") %>% filter(Date != "NA")
+head(distance_df)
+distance_plot <- ggplot(distance_df, aes(x = Distance)) + geom_histogram(binwidth =0.5)
+distance_plot
+```
+
+I assigned the variable of "distance_df" by only selecting "Distance", "Date_received" and "Date" not "null. This variable only has the data that the coupon was redeemed by customers. I did a simple plot by looking at the distribution of distance, surprising found out that the coupon redemption is mostly related to distance. As the dataset has illustrated, for "Distance" variable, 0 indicates less than 500 meters;10 indicates more than 5 kilometers. The coupon was redeemed most by people who lives about 500 meters away from the store, as customers live further, they tends less to redeem coupons.
+
+Then I would like to see some correlation between discount rate and coupon redemption.
+
+```{r rate, include=TRUE, echo=TRUE}
+rate_df <- offline_df %>% select("Discount_rate", "Date_received", "Date") %>% filter(Date != "NA")
+head(rate_df)
+rate_plot <- ggplot(rate_df, aes(x = Discount_rate)) + geom_histogram(binwidth =0.01)
+rate_plot
+```
+
+According to the graph, as discount rate rises, the coupons tends to have more redemption. 
+
+By further investigating the data set, I feel like a model would fit for predicting whether the coupon would likely be redeemed or not based on the discount rate and distance so that business could better initialize what coupon to be distributed to what group of customers.
+
+I'm assuming to change the NA values in Date as "F", while the dates when the coupons was redeemed as "T" to make it a binary and make predictions using discount of rate and distance as a predictor.
+
+```{r re, include=TRUE, echo=TRUE}
+redeem <- offline_df %>% select("Discount_rate", "Distance", "Date_received", "Date") %>% filter(Date != "NA")
+head(redeem)
+redeem$Date <- "T"
+head(redeem)
+
+not_redeem <- offline_df %>% select("Discount_rate", "Distance", "Date_received", "Date")
+not_redeem_replace <- not_redeem[is.na(not_redeem$Date), ]
+not_redeem_replace$Date <- "F"
+head(not_redeem_replace)
+
+new_data <- rbind(redeem, not_redeem_replace)
+head(new_data)
+```
+
+I'm going to utilize machine learning skill to train this model. First I'm going to split the new_data into train and test.
+
+```{r mode, include=TRUE, echo=TRUE}
+split <- sample.split(new_data, SplitRatio = 0.8)
+split
+train <- subset(new_data, split == "TRUE")
+test <- subset(new_data, split == "FALSE")
+
+redeem_model <- glm(as.factor(Date) ~ Discount_rate+Distance, data = train, family = "binomial")
+summary(redeem_model)
+```
+Luckily, I have the model successfully showing above. As the model showing, both distance and discount rate have significantly affected the redemption of a coupon. 
+
+Then I would like to test the accuracy of my mode.
+
+```{r test, include=TRUE, echo=TRUE}
+res <- predict(redeem_model, test, type="response")
+head(res)
+res <- predict(redeem_model, train, type="response")
+head(res)
+confmatrix <- table(Actual_value = train$Date, Predicted_value = res > 0.1)
+confmatrix
+(confmatrix[[1,1]] + confmatrix[[2,2]]) / sum(confmatrix)
+```
+
+Ultimately, by adjusting the predicted value threshold to 0.1, I had the accuracy of the model set to work. We could see the accuracy of the model is about 77%! The model is moderately a good fit of the data set.
+
+To summarize, I had demonstrated some data transformation to 3 data sets to investigate how coupons affecting customers and business. I found that the coupon redemption rate is significantly related to discount rate and distance customers live from the stores.
+
+
+
+# Referances
+Epstein L. (Dec 2022)  *Advantages and Disadvantages of Using Coupons for Your Business* https://www.investopedia.com/articles/personal-finance/051815/pros-cons-using-coupons-your-business.asp
+
+coupon_pic https://www.liveabout.com/creating-coupon-promotions-2890270
+
+
+
+
+
+# Data
+Coupons.csv
+https://www.kaggle.com/datasets/vysakhvms/coupons
+
+customer_demographics.csv
+https://www.kaggle.com/datasets/vasudeva009/predicting-coupon-redemption
+
+customer_transaction_data.csv
+https://www.kaggle.com/datasets/vasudeva009/predicting-coupon-redemption
+
+
+offline_train.csv
+https://tianchi.aliyun.com/dataset/137322?t=1690756146750
+
+
+
+
